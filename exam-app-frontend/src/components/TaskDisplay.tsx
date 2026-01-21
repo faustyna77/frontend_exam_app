@@ -7,6 +7,9 @@ interface TaskDisplayProps {
 
 function TaskDisplay({ task, index }: TaskDisplayProps) {
   const getAnswerClass = (answer: string) => {
+    // ✅ Tylko podświetl jeśli correctAnswer istnieje
+    if (!task.correctAnswer) return '';
+    
     const answerLetter = answer.charAt(0);
     return answerLetter === task.correctAnswer ? 'correct-answer' : '';
   };
@@ -31,22 +34,34 @@ function TaskDisplay({ task, index }: TaskDisplayProps) {
               </li>
             ))}
           </ul>
-          <p className="correct-indicator">
-            ✅ Poprawna odpowiedź: <strong>{task.correctAnswer}</strong>
-          </p>
+
+          {/* ✅ Pokaż poprawną odpowiedź tylko jeśli istnieje */}
+          {task.correctAnswer && (
+            <p className="correct-indicator">
+              ✓ Poprawna odpowiedź: <strong>{task.correctAnswer}</strong>
+            </p>
+          )}
         </div>
       )}
 
-      <div className="task-solution">
-        <h5>💡 Rozwiązanie:</h5>
-        <div className="solution-content">
-          <p>{task.solution}</p>
+      {/* ✅ Pokaż rozwiązanie tylko jeśli istnieje */}
+      {task.solution && (
+        <div className="task-solution">
+          <h5>💡 Rozwiązanie:</h5>
+          <div className="solution-content">
+            <p>{task.solution}</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="task-meta">
-        <small>📚 {task.source}</small>
-      </div>
+      {/* ✅ Jeśli brak rozwiązań, pokaż info */}
+      {!task.solution && !task.correctAnswer && (
+        <div className="no-solution-info">
+          <p>🔒 Zadanie bez rozwiązania - idealne do samodzielnej pracy!</p>
+        </div>
+      )}
+
+    
     </div>
   );
 }

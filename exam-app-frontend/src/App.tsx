@@ -1,90 +1,140 @@
 import { useState, useEffect } from 'react';
 import { authApi } from './services/api';
 import type { User } from './types';
+import Layout from './components/Layout';
+import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Register from './components/Register';
 import TaskGenerator from './components/TaskGenerator';
-import TaskHistory from './components/TaskHistory';  // ← DODAJ
+import TaskHistory from './components/TaskHistory';
+import Statistics from './components/Statistics';
+import Premium from './components/Premium';
+import Reviews from './components/Reviews';
+import Success from './components/Success';
+import Cancel from './components/Cancel';
 import './App.css';
+import './components/LandingPage.css';
 
-type View = 'login' | 'register' | 'generator' | 'history';  // ← Dodaj 'history'
+type View = 'landing' | 'login' | 'register' | 'generator' | 'history' | 'statistics' | 'premium' | 'reviews' | 'success' | 'cancel';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<View>('login');
+  const [currentView, setCurrentView] = useState<View>('landing');
 
   useEffect(() => {
     const savedUser = authApi.getCurrentUser();
     if (savedUser && authApi.isAuthenticated()) {
       setUser(savedUser);
-      setCurrentView('generator');
+      setCurrentView('history'); // ← Zmienione z 'generator' na 'history'
+    } else {
+      setCurrentView('landing');
+    }
+
+    // Sprawdź URL dla success/cancel
+    const hash = window.location.hash;
+    if (hash === '#success') {
+      setCurrentView('success');
+    } else if (hash === '#cancel') {
+      setCurrentView('cancel');
     }
   }, []);
 
   const handleLoginSuccess = (loggedInUser: User) => {
     setUser(loggedInUser);
-    setCurrentView('generator');
+    setCurrentView('history'); // ← Zmienione z 'generator' na 'history'
   };
 
   const handleRegisterSuccess = (registeredUser: User) => {
     setUser(registeredUser);
-    setCurrentView('generator');
+    setCurrentView('history'); // ← Zmienione z 'generator' na 'history'
   };
 
   const handleLogout = () => {
     authApi.logout();
     setUser(null);
-    setCurrentView('login');
+    setCurrentView('landing');
   };
 
-  return (
-    <div className="App">
-      <header className="app-header">
-        <h1>🎓 Exam Task Generator</h1>
-        {user && (
-          <div className="user-info">
-            <nav className="nav-menu">
-              <button
-                onClick={() => setCurrentView('generator')}
-                className={`nav-button ${currentView === 'generator' ? 'active' : ''}`}
-              >
-                ✨ Generator
-              </button>
-              <button
-                onClick={() => setCurrentView('history')}
-                className={`nav-button ${currentView === 'history' ? 'active' : ''}`}
-              >
-                📚 Historia
-              </button>
-            </nav>
-            <span>Witaj, {user.firstName || user.username}! 👋</span>
-            <button onClick={handleLogout} className="btn-logout">
-              Wyloguj się
-            </button>
-          </div>
-        )}
-      </header>
+  const handleNavigate = (view: View) => {
+    setCurrentView(view);
+  };
 
-      <main className="app-main">
-        {currentView === 'login' && (
+  // Widoki bez layoutu (success/cancel)
+  if (currentView === 'success' || currentView === 'cancel') {
+    return (
+      <div className="App">
+        {currentView === 'success' && <Success />}
+        {currentView === 'cancel' && <Cancel />}
+      </div>
+    );
+  }
+
+  // Landing Page (niezalogowani użytkownicy)
+  if (currentView === 'landing' && !user) {
+    return (
+      <Layout
+        user={null}
+        currentView="landing"
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+      >
+        <LandingPage onNavigate={handleNavigate} />
+      </Layout>
+    );
+  }
+
+  // Login Page
+  if (currentView === 'login') {
+    return (
+      <Layout
+        user={null}
+        currentView="login"
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+      >
+        <div className="app-main">
           <Login
             onLoginSuccess={handleLoginSuccess}
             onSwitchToRegister={() => setCurrentView('register')}
           />
-        )}
+        </div>
+      </Layout>
+    );
+  }
 
-        {currentView === 'register' && (
+  // Register Page
+  if (currentView === 'register') {
+    return (
+      <Layout
+        user={null}
+        currentView="register"
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+      >
+        <div className="app-main">
           <Register
             onRegisterSuccess={handleRegisterSuccess}
             onSwitchToLogin={() => setCurrentView('login')}
           />
-        )}
+        </div>
+      </Layout>
+    );
+  }
 
-        {currentView === 'generator' && user && <TaskGenerator />}
-
-        {currentView === 'history' && user && <TaskHistory />}
-      </main>
-    </div>
+  // Widoki dla zalogowanych użytkowników
+  return (
+    <Layout
+      user={user}
+      currentView={currentView}
+      onNavigate={handleNavigate}
+      onLogout={handleLogout}
+    >
+      {currentView === 'generator' && <TaskGenerator />}
+      {currentView === 'history' && <TaskHistory />}
+      {currentView === 'statistics' && <Statistics />}
+      {currentView === 'premium' && <Premium />}
+      {currentView === 'reviews' && <Reviews />}
+    </Layout>
   );
 }
 

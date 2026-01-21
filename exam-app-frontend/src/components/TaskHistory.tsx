@@ -1,169 +1,175 @@
 import { useState, useEffect } from 'react';
 import { generatedTasksApi } from '../services/api';
 import type { GeneratedTask } from '../types';
-import TaskHistoryItem from './TaskHistoryItem';
-import ConfirmModal from './ConfirmModal';
 
-function TaskHistory() {
-  const [tasks, setTasks] = useState<GeneratedTask[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalCount, setTotalCount] = useState<number>(0);
 
-  // SFWP
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<string>('createdAt');
-  const [sortOrder, setSortOrder] = useState<string>('desc');
+interface ParsedTask {
+  content: string;
+  answers: string[];
+  correctAnswer: string;
+  solution: string;
+  source: string;
+}
+
+interface Filters {
+  level?: string;
+  subject?: string;
+  dateFilter?: string;
+}
+
+const TaskHistory: React.FC = () => {
+  const [tasks, setTasks] = useState<GeneratedTask[]>([]);  // ← Już jest []
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // ✅ FILTRY
-  const [levelFilter, setLevelFilter] = useState<string>('');
-  const [subjectFilter, setSubjectFilter] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState<string>('');
-
-  // Modal
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
-
-  const pageSize = 10;
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  
+  // Search and Sort
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'prompt'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // Filters
+  const [filters, setFilters] = useState<Filters>({});
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   useEffect(() => {
-    loadTasks();
-  }, [page, searchQuery, sortBy, sortOrder, levelFilter, subjectFilter, dateFilter]); // ✅ Dodane filtry
+    fetchTasks();
+  }, [page, pageSize, search, sortBy, sortOrder, filters]);
 
-  const loadTasks = async () => {
+  const fetchTasks = async () => {
     setLoading(true);
-    setError('');
-    
+    setError(null);
+
     try {
       const response = await generatedTasksApi.getAll(
-        page, 
+        page,
         pageSize,
-        searchQuery,
+        search || undefined,
         sortBy,
         sortOrder,
-        levelFilter,    // ✅ F
-        subjectFilter,  // ✅ F
-        dateFilter      // ✅ F
+        filters.level || undefined,
+        filters.subject || undefined,
+        filters.dateFilter || undefined
       );
-      setTasks(response.tasks);
+
+      console.log('📦 Pełna odpowiedź z API:', response);
+      
+      // Backend zwraca 'tasks', nie 'items'
+      setTasks(response.tasks || response.items || []);
       setTotalPages(response.totalPages);
       setTotalCount(response.totalCount);
+      
     } catch (err: any) {
-      setError('Nie udało się pobrać historii zadań');
-      console.error(err);
+      console.error('❌ Błąd pobierania historii:', err);
+      setError(err.response?.data?.message || 'Nie udało się pobrać historii zadań');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const parseGeneratedText = (generatedText: string): ParsedTask[] => {
+    try {
+      const parsed = JSON.parse(generatedText);
+      return parsed.tasks || [];
+    } catch {
+      return [];
+    }
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString('pl-PL', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
     setPage(1);
-    loadTasks();
+  };
+
+  const handleFilterChange = (filterName: keyof Filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterName]: value || undefined,
+    }));
+    setPage(1);
   };
 
   const clearFilters = () => {
-    setSearchQuery('');
-    setLevelFilter('');
-    setSubjectFilter('');
-    setDateFilter('');
-    setSortBy('createdAt');
-    setSortOrder('desc');
+    setFilters({});
+    setSearch('');
     setPage(1);
   };
 
-  const handleDeleteClick = (id: number) => {
-    setTaskToDelete(id);
-    setShowDeleteModal(true);
+  const toggleTaskDetails = (taskId: number) => {
+    setSelectedTaskId(selectedTaskId === taskId ? null : taskId);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (taskToDelete === null) return;
+  const handleDelete = async (taskId: number) => {
+    if (!window.confirm('Czy na pewno chcesz usunąć to zadanie?')) {
+      return;
+    }
 
     try {
-      await generatedTasksApi.delete(taskToDelete);
-      setTasks(tasks.filter(task => task.id !== taskToDelete));
-      setTotalCount(totalCount - 1);
-      setShowDeleteModal(false);
-      setTaskToDelete(null);
+      await generatedTasksApi.delete(taskId);
+      fetchTasks();
     } catch (err: any) {
-      setError('Nie udało się usunąć zadania');
-      console.error(err);
-      setShowDeleteModal(false);
+      console.error('❌ Błąd usuwania:', err);
+      alert(err.response?.data?.message || 'Nie udało się usunąć zadania');
     }
   };
 
-  const handleDeleteCancel = () => {
-    setShowDeleteModal(false);
-    setTaskToDelete(null);
-  };
-
-  const handleExportPdf = async (id: number) => {
+  const handleExportPdf = async (taskId: number) => {
     try {
-      const blob = await generatedTasksApi.exportPdf(id, true);
+      const blob = await generatedTasksApi.exportPdf(taskId, true);
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `zadanie-${id}.pdf`;
+      a.download = `zadanie_${taskId}.pdf`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err: any) {
-      console.error('PDF export error:', err);
+      console.error('❌ Błąd eksportu PDF:', err);
+      alert(err.response?.data?.message || 'Nie udało się wygenerować PDF');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="task-history">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Ładowanie historii...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="task-history">
-      <div className="history-header">
-        <h2>📚 Historia wygenerowanych zadań</h2>
-        <p className="history-subtitle">
-          Łącznie wygenerowano: <strong>{totalCount}</strong> {totalCount === 1 ? 'zadanie' : 'zadań'}
-        </p>
+      <div className="task-history-header">
+        <h1>Historia Wygenerowanych Zadań</h1>
+        <p className="task-count">Znaleziono: {totalCount} zadań</p>
       </div>
 
-      {/* ✅ PEŁNY SFWP */}
-      <div className="sfwp-controls">
-        {/* W - WYSZUKIWANIE */}
-        <div className="search-section">
-          <form onSubmit={handleSearch} className="search-form">
-            <input
-              type="text"
-              placeholder="🔍 Szukaj po temacie..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-            <button type="submit" className="btn-search">
-              Szukaj
-            </button>
-          </form>
+      {/* Filters and Search */}
+      <div className="controls">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Szukaj w promptach i zadaniach..."
+            value={search}
+            onChange={handleSearchChange}
+            className="search-input"
+          />
         </div>
 
-        {/* F - FILTROWANIE */}
-        <div className="filter-section">
-          <label>📊 Filtry:</label>
-          
+        <div className="filters">
           <select
-            value={levelFilter}
-            onChange={(e) => {
-              setLevelFilter(e.target.value);
-              setPage(1);
-            }}
+            value={filters.level || ''}
+            onChange={(e) => handleFilterChange('level', e.target.value)}
             className="filter-select"
           >
             <option value="">Wszystkie poziomy</option>
@@ -172,128 +178,214 @@ function TaskHistory() {
           </select>
 
           <select
-            value={subjectFilter}
-            onChange={(e) => {
-              setSubjectFilter(e.target.value);
-              setPage(1);
-            }}
+            value={filters.subject || ''}
+            onChange={(e) => handleFilterChange('subject', e.target.value)}
             className="filter-select"
           >
-            <option value="">Wszystkie działy</option>
+            <option value="">Wszystkie tematy</option>
             <option value="mechanika">Mechanika</option>
+            <option value="kinematyka">Kinematyka</option>
             <option value="dynamika">Dynamika</option>
-            <option value="elektryczność">Elektryczność</option>
-            <option value="optyka">Optyka</option>
             <option value="termodynamika">Termodynamika</option>
-            <option value="fizyka nowoczesna">Fizyka nowoczesna</option>
-            <option value="fale">Fale</option>
+            <option value="elektryczność">Elektryczność</option>
+            <option value="grawitacja">Grawitacja</option>
           </select>
 
           <select
-            value={dateFilter}
-            onChange={(e) => {
-              setDateFilter(e.target.value);
-              setPage(1);
-            }}
+            value={filters.dateFilter || ''}
+            onChange={(e) => handleFilterChange('dateFilter', e.target.value)}
             className="filter-select"
           >
-            <option value="">Cały czas</option>
+            <option value="">Cały okres</option>
             <option value="today">Dzisiaj</option>
             <option value="week">Ostatni tydzień</option>
             <option value="month">Ostatni miesiąc</option>
           </select>
-        </div>
 
-        {/* S - SORTOWANIE */}
-        <div className="sort-section">
-          <label>🔀 Sortuj:</label>
           <select
             value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value);
-              setPage(1);
-            }}
-            className="sort-select"
+            onChange={(e) => setSortBy(e.target.value as 'createdAt' | 'prompt')}
+            className="filter-select"
           >
-            <option value="createdAt">Data</option>
-            <option value="prompt">Temat</option>
+            <option value="createdAt">Data utworzenia</option>
+            <option value="prompt">Prompt</option>
           </select>
 
-          <button
-            onClick={() => {
-              setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-              setPage(1);
-            }}
-            className="btn-sort-order"
-            title={sortOrder === 'asc' ? 'Rosnąco' : 'Malejąco'}
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            className="filter-select"
           >
-            {sortOrder === 'asc' ? '⬆️' : '⬇️'}
-          </button>
-        </div>
+            <option value="desc">Malejąco</option>
+            <option value="asc">Rosnąco</option>
+          </select>
 
-        {/* Przycisk czyszczenia */}
-        {(searchQuery || levelFilter || subjectFilter || dateFilter) && (
-          <button onClick={clearFilters} className="btn-clear-all">
-            🔄 Wyczyść filtry
-          </button>
-        )}
-      </div>
-
-      {error && <div className="error-message">❌ {error}</div>}
-
-      {tasks.length === 0 ? (
-        <div className="empty-state">
-          <p>📭 Nie znaleziono zadań spełniających kryteria.</p>
-          <button onClick={clearFilters} className="btn-secondary">
+          <button onClick={clearFilters} className="clear-btn">
             Wyczyść filtry
           </button>
         </div>
-      ) : (
+
+        <div className="page-size-control">
+          <label>
+            Wyników na stronę:
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+              className="page-size-select"
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {loading && <div className="loading">Ładowanie...</div>}
+
+      {/* Error State */}
+      {error && <div className="error">Błąd: {error}</div>}
+
+      {/* Tasks List */}
+      {!loading && !error && (
         <>
           <div className="tasks-list">
-            {tasks.map((task) => (
-              <TaskHistoryItem
-                key={task.id}
-                task={task}
-                onDelete={handleDeleteClick}
-                onExportPdf={handleExportPdf}
-              />
-            ))}
+            {!tasks || tasks.length === 0 ? (
+              <div className="no-tasks">Brak zadań do wyświetlenia</div>
+            ) : (
+              tasks.map((generatedTask) => {
+                const parsedTasks = parseGeneratedText(generatedTask.generatedText);
+                const isExpanded = selectedTaskId === generatedTask.id;
+
+                return (
+                  <div key={generatedTask.id} className="task-card">
+                    <div className="task-card-header" onClick={() => toggleTaskDetails(generatedTask.id)}>
+                      <div className="task-info">
+                        <h3 className="task-prompt">{generatedTask.prompt}</h3>
+                        <p className="task-date">{formatDate(generatedTask.createdAt)}</p>
+                        <p className="task-count-badge">
+                          Liczba zadań: {parsedTasks.length}
+                        </p>
+                      </div>
+                      <div className="task-actions">
+                        <button
+                          className="btn-action btn-pdf"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportPdf(generatedTask.id);
+                          }}
+                          title="Eksportuj do PDF"
+                        >
+                          📄 PDF
+                        </button>
+                        <button
+                          className="btn-action btn-delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(generatedTask.id);
+                          }}
+                          title="Usuń zadanie"
+                        >
+                          🗑️
+                        </button>
+                        <button className="expand-btn">
+                          {isExpanded ? '▼' : '▶'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="task-details">
+                        {parsedTasks.map((task, index) => (
+                          <div key={index} className="task-item">
+                            <div className="task-content">
+                              <h4>Treść zadania {index + 1}:</h4>
+                              <p>{task.content}</p>
+                            </div>
+
+                            <div className="task-answers">
+                              <h4>Odpowiedzi:</h4>
+                              <ul>
+                                {task.answers.map((answer, ansIndex) => (
+                                  <li
+                                    key={ansIndex}
+                                    className={
+                                      answer.startsWith(task.correctAnswer)
+                                        ? 'correct-answer'
+                                        : ''
+                                    }
+                                  >
+                                    {answer}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="task-solution">
+                              <h4>Rozwiązanie:</h4>
+                              <p>{task.solution}</p>
+                            </div>
+
+                            <div className="task-source">
+                              <strong>Źródło:</strong> {task.source}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
 
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="pagination">
               <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="pagination-btn"
+              >
+                ««
+              </button>
+              <button
                 onClick={() => setPage(page - 1)}
                 disabled={page === 1}
-                className="btn-pagination"
+                className="pagination-btn"
               >
-                ← Poprzednia
+                «
               </button>
+
               <span className="page-info">
                 Strona {page} z {totalPages}
               </span>
+
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page === totalPages}
-                className="btn-pagination"
+                className="pagination-btn"
               >
-                Następna →
+                »
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                className="pagination-btn"
+              >
+                »»
               </button>
             </div>
           )}
         </>
       )}
-
-      <ConfirmModal
-        isOpen={showDeleteModal}
-        title="🗑️ Usuwanie zadania"
-        message="Czy na pewno chcesz usunąć to zadanie? Tej operacji nie można cofnąć."
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
-}
+};
 
 export default TaskHistory;

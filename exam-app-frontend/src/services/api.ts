@@ -8,6 +8,12 @@ import type {
   TaskGenerationResponse,
   GeneratedTasksResponse,
   GeneratedTask,
+  CheckoutResponse,
+  SubscriptionStatus,
+  Review,
+  CreateReviewRequest,
+  UpdateReviewRequest,
+  ReviewStats,
 } from '../types';
 
 const API_BASE_URL = 'https://localhost:7013/api';
@@ -71,8 +77,15 @@ export const authApi = {
 
 // Physics API
 export const physicsApi = {
-  generateTasks: async (data: TaskGenerationRequest): Promise<TaskGenerationResponse> => {
-    const response = await api.post<TaskGenerationResponse>('/Physics/generate-tasks', data);
+  // ✅ ZAKTUALIZOWANE - dodany parametr includeSolutions
+  generateTasks: async (
+    data: TaskGenerationRequest,
+    includeSolutions: boolean = true
+  ): Promise<TaskGenerationResponse> => {
+    const response = await api.post<TaskGenerationResponse>(
+      `/Physics/generate-tasks?includeSolutions=${includeSolutions}`,
+      data
+    );
     return response.data;
   },
 
@@ -88,23 +101,23 @@ export const generatedTasksApi = {
   getAll: async (
     page: number = 1,
     pageSize: number = 10,
-    search?: string,        // ✅ W - Wyszukiwanie
-    sortBy?: string,        // ✅ S - Sortowanie
-    sortOrder?: string,     // ✅ S - Kierunek
-    level?: string,         // ✅ F - Filtr poziom
-    subject?: string,       // ✅ F - Filtr dział
-    dateFilter?: string     // ✅ F - Filtr data
+    search?: string,
+    sortBy?: string,
+    sortOrder?: string,
+    level?: string,
+    subject?: string,
+    dateFilter?: string
   ): Promise<GeneratedTasksResponse> => {
-    const response = await api.get<GeneratedTasksResponse>('/GeneratedTasks', {
-      params: { 
-        page, 
+    const response = await api.get<GeneratedTasksResponse>('/generated-tasks', {
+      params: {
+        page,
         pageSize,
         search,
         sortBy,
         sortOrder,
         level,
         subject,
-        dateFilter
+        dateFilter,
       },
     });
     return response.data;
@@ -112,23 +125,23 @@ export const generatedTasksApi = {
 
   // Pobierz pojedyncze zadanie
   getById: async (id: number): Promise<GeneratedTask> => {
-    const response = await api.get<GeneratedTask>(`/GeneratedTasks/${id}`);  // ✅ POPRAWIONE - nawiasy!
+    const response = await api.get<GeneratedTask>(`/generated-tasks/${id}`);
     return response.data;
   },
 
   // Usuń zadanie
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/GeneratedTasks/${id}`);  // ✅ POPRAWIONE - nawiasy!
+    await api.delete(`/generated-tasks/${id}`);
   },
 
   // Usuń wiele zadań
   deleteBulk: async (ids: number[]): Promise<void> => {
-    await api.delete('/GeneratedTasks/bulk', { data: ids });
+    await api.delete('/generated-tasks/bulk', { data: ids });
   },
 
   // Export do PDF
   exportPdf: async (id: number, includeSolutions: boolean = true): Promise<Blob> => {
-    const response = await api.get(`/GeneratedTasks/${id}/export-pdf`, {  // ✅ POPRAWIONE - nawiasy!
+    const response = await api.get(`/generated-tasks/${id}/export-pdf`, {
       params: { includeSolutions },
       responseType: 'blob',
     });
@@ -137,7 +150,71 @@ export const generatedTasksApi = {
 
   // Sprawdź limit PDF
   getPdfLimitStatus: async (): Promise<any> => {
-    const response = await api.get('/GeneratedTasks/pdf-limit-status');
+    const response = await api.get('/generated-tasks/pdf-limit-status');
+    return response.data;
+  },
+};
+
+export const paymentApi = {
+  createCheckout: async (planType: 'monthly' | 'yearly'): Promise<CheckoutResponse> => {
+    const response = await api.post<CheckoutResponse>('/Payment/create-checkout', {
+      planType,
+    });
+    return response.data;
+  },
+
+  getSubscriptionStatus: async (): Promise<SubscriptionStatus> => {
+    const response = await api.get<SubscriptionStatus>('/Payment/subscription-status');
+    return response.data;
+  },
+};
+
+// Reviews API
+export const reviewsApi = {
+  // Pobierz wszystkie recenzje
+  getAll: async (): Promise<Review[]> => {
+    const response = await api.get<Review[]>('/Reviews');
+    return response.data;
+  },
+
+  // Pobierz moją recenzję
+  getMy: async (): Promise<Review | null> => {
+    try {
+      const response = await api.get<Review>('/Reviews/my');
+      return response.data;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        return null;
+      }
+      throw err;
+    }
+  },
+
+  // Dodaj recenzję
+  create: async (data: CreateReviewRequest): Promise<Review> => {
+    const response = await api.post<Review>('/Reviews', data);
+    return response.data;
+  },
+
+  // Aktualizuj moją recenzję
+  update: async (data: UpdateReviewRequest): Promise<Review> => {
+    const response = await api.put<Review>('/Reviews/my', data);
+    return response.data;
+  },
+
+  // Usuń moją recenzję
+  deleteMy: async (): Promise<void> => {
+    await api.delete('/Reviews/my');
+  },
+
+  // Usuń recenzję (admin)
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/Reviews/${id}`);
+  },
+
+  // Pobierz statystyki
+  getStats: async (): Promise<ReviewStats> => {
+    const response = await api.get<ReviewStats>('/Reviews/stats');
     return response.data;
   },
 };

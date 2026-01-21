@@ -1,0 +1,73 @@
+/* ========================================
+   LANDING HEADER - Navbar dla niezalogowanych
+   ======================================== */
+
+.landing-header {
+  background: linear-gradient(90deg, #1a0033 0%, #2d0066 50%, #1a0033 100%);
+  border-bottom: 2px solid #a855f7;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.landing-header .header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+}
+
+.landing-header .app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #a855f7 0%, #ec4899 50%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.nav-button-primary {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%) !important;
+  color: white !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+}
+
+.nav-button-primary:hover {
+  box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6) !important;
+  transform: translateY(-2px) !important;
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .landing-header .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .landing-header .app-title {
+    font-size: 1.25rem;
+  }
+
+  .auth-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .auth-buttons .nav-button {
+    flex: 1;
+  }
+}

@@ -12,6 +12,7 @@ function TaskGenerator() {
     taskType: 'closed',
   });
 
+  const [includeSolutions, setIncludeSolutions] = useState<boolean>(true); // ✅ Nowy stan
   const [tasks, setTasks] = useState<ExamTask[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -33,7 +34,8 @@ function TaskGenerator() {
     setTasks([]);
 
     try {
-      const result = await physicsApi.generateTasks(formData);
+      // ✅ Przekazujemy includeSolutions do API
+      const result = await physicsApi.generateTasks(formData, includeSolutions);
 
       if (result.tasks && result.tasks.length > 0) {
         setTasks(result.tasks);
@@ -56,7 +58,7 @@ function TaskGenerator() {
   return (
     <div className="task-generator">
       <div className="generator-header">
-        <h2>🎯 Generator Zadań Maturalnych</h2>
+        <h2>Generator Zadań Maturalnych</h2>
         <p className="generator-subtitle">
           Wygeneruj zadania z fizyki dostosowane do poziomu maturalnego
         </p>
@@ -66,7 +68,7 @@ function TaskGenerator() {
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="taskTopic">
-              📝 Temat zadania: <span className="required">*</span>
+              Temat zadania: <span className="required">*</span>
             </label>
             <input
               type="text"
@@ -83,7 +85,7 @@ function TaskGenerator() {
 
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="difficultyLevel">🎓 Poziom:</label>
+            <label htmlFor="difficultyLevel"> Poziom:</label>
             <select
               id="difficultyLevel"
               name="difficultyLevel"
@@ -96,7 +98,7 @@ function TaskGenerator() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="physicsSubject">📚 Dział fizyki:</label>
+            <label htmlFor="physicsSubject">Dział fizyki:</label>
             <select
               id="physicsSubject"
               name="physicsSubject"
@@ -116,7 +118,7 @@ function TaskGenerator() {
 
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="taskType">📋 Typ zadania:</label>
+            <label htmlFor="taskType"> Typ zadania:</label>
             <select
               id="taskType"
               name="taskType"
@@ -129,7 +131,7 @@ function TaskGenerator() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="taskCount">🔢 Liczba zadań:</label>
+            <label htmlFor="taskCount"> Liczba zadań:</label>
             <input
               type="number"
               id="taskCount"
@@ -144,31 +146,59 @@ function TaskGenerator() {
           </div>
         </div>
 
+        {/* ✅ NOWA SEKCJA - Checkbox dla rozwiązań */}
+        <div className="form-row">
+          <div className="form-group checkbox-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={includeSolutions}
+                onChange={(e) => setIncludeSolutions(e.target.checked)}
+              />
+              <span>Pokaż rozwiązania i odpowiedzi</span>
+            </label>
+            <small>
+              {includeSolutions 
+                ? '✅ Zadania będą zawierać rozwiązania i poprawne odpowiedzi'
+                : '🔒 Zadania bez rozwiązań (idealne do samodzielnej pracy)'}
+            </small>
+          </div>
+        </div>
+
         {error && (
           <div className="error-message">
-            ❌ {error}
+             {error}
           </div>
         )}
 
         {success && tasks.length > 0 && (
           <div className="success-message">
-            ✅ Wygenerowano {tasks.length} {tasks.length === 1 ? 'zadanie' : 'zadania'}!
+             Wygenerowano {tasks.length} {tasks.length === 1 ? 'zadanie' : 'zadania'}!
+            {!includeSolutions && ' (bez rozwiązań)'}
           </div>
         )}
 
         <button type="submit" disabled={loading} className="btn-primary btn-generate">
-          {loading ? '⏳ Generowanie...' : '✨ Wygeneruj zadania'}
+          {loading ? ' Generowanie...' : ' Wygeneruj zadania'}
         </button>
       </form>
 
       {tasks.length > 0 && (
         <div className="tasks-container">
           <div className="tasks-header">
-            <h3>📚 Wygenerowane zadania</h3>
-            <p>Poziom: {formData.difficultyLevel} | Dział: {formData.physicsSubject}</p>
+            <h3> Wygenerowane zadania</h3>
+            <p>
+              Poziom: {formData.difficultyLevel} | Dział: {formData.physicsSubject}
+              {!includeSolutions && ' | 🔒 Bez rozwiązań'}
+            </p>
           </div>
           {tasks.map((task, index) => (
-            <TaskDisplay key={index} task={task} index={index + 1} />
+            <TaskDisplay 
+              key={index} 
+              task={task} 
+              index={index + 1}
+              // Backend już usuwa rozwiązania, więc nie musimy przekazywać showSolutions
+            />
           ))}
         </div>
       )}

@@ -36,6 +36,7 @@ export interface TaskGenerationRequest {
   difficultyLevel: string;
   physicsSubject: string;
   taskCount: number;
+  taskType?: string;
 }
 
 export interface ExamTask {
@@ -52,23 +53,6 @@ export interface TaskGenerationResponse {
   message?: string;
 }
 
-// Physics types
-export interface TaskGenerationRequest {
-  taskTopic: string;
-  difficultyLevel: string;
-  physicsSubject: string;
-  taskCount: number;
-  taskType?: string;  // opcjonalne
-}
-
-export interface ExamTask {
-  content: string;
-  answers: string[];
-  correctAnswer: string;
-  solution: string;
-  source: string;
-}
-
 // Generated Tasks types
 export interface GeneratedTask {
   id: number;
@@ -77,10 +61,80 @@ export interface GeneratedTask {
   createdAt: string;
 }
 
+// ✅ POPRAWIONY TYP
 export interface GeneratedTasksResponse {
-  tasks: GeneratedTask[];
+  items: GeneratedTask[];  // ← To jest pole, nie metoda!
   totalCount: number;
-  page: number;
+  currentPage: number;     // Zmienione z 'page' na 'currentPage'
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ParsedTask {
+  content: string;
+  answers: string[] | null;
+  correctAnswer: string;
+  solution: string;
+  source: string;
+  pointsAvailable?: number;
+}
+
+// Payment types
+export interface CreateCheckoutRequest {
+  planType: 'monthly' | 'yearly';
+}
+
+export interface CheckoutResponse {
+  checkoutUrl: string;
+}
+
+export interface SubscriptionStatus {
+  isPremium: boolean;
+  expiresAt: string | null;
+  stripeCustomerId: string | null;
+}
+
+// Reviews types
+export interface Review {
+  id: number;
+  userId: number;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateReviewRequest {
+  rating: number;
+  comment: string;
+}
+
+export interface UpdateReviewRequest {
+  rating: number;
+  comment: string;
+}
+
+export interface ReviewStats {
+  totalReviews: number;
+  averageRating: number;
+  ratingDistribution: {
+    [key: number]: number;
+  };
+}
+// Generated Tasks types
+export interface GeneratedTask {
+  id: number;
+  prompt: string;
+  generatedText: string;
+  createdAt: string;
+}
+
+// ✅ POPRAWIONY TYP - zgodny z tym co faktycznie zwraca API
+export interface GeneratedTasksResponse {
+  tasks: GeneratedTask[];    // ← Backend zwraca 'tasks', nie 'items'
+  totalCount: number;
+  page: number;              // ← Backend zwraca 'page', nie 'currentPage'
   pageSize: number;
   totalPages: number;
 }

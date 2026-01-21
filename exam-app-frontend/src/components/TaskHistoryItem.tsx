@@ -60,7 +60,7 @@ function TaskHistoryItem({ task, onDelete, onExportPdf }: TaskHistoryItemProps) 
             }}
             title="Usuń"
           >
-            🗑️
+            🗑️ Usuń
           </button>
           <button className="btn-icon btn-expand">
             {isExpanded ? '▲' : '▼'}
@@ -72,7 +72,7 @@ function TaskHistoryItem({ task, onDelete, onExportPdf }: TaskHistoryItemProps) 
         <div className="history-item-content">
           {parsedTasks.map((parsedTask, index) => (
             <div key={index} className="parsed-task">
-              <h5>Zadanie {index + 1}</h5>
+              <h5>📝 Zadanie {index + 1}</h5>
               <div className="parsed-task-content">
                 <p><strong>Treść:</strong></p>
                 <p>{parsedTask.content}</p>
@@ -80,7 +80,7 @@ function TaskHistoryItem({ task, onDelete, onExportPdf }: TaskHistoryItemProps) 
 
               {parsedTask.answers && (
                 <div className="parsed-task-answers">
-                  <p><strong>Odpowiedzi:</strong></p>
+                  <p><strong>📋 Odpowiedzi:</strong></p>
                   <ul>
                     {parsedTask.answers.map((answer, i) => (
                       <li key={i} className={answer.startsWith(parsedTask.correctAnswer) ? 'correct' : ''}>
@@ -91,14 +91,18 @@ function TaskHistoryItem({ task, onDelete, onExportPdf }: TaskHistoryItemProps) 
                 </div>
               )}
 
-              <div className="parsed-task-solution">
-                <p><strong>💡 Rozwiązanie:</strong></p>
-                <p>{parsedTask.solution}</p>
-              </div>
+              {parsedTask.solution && (
+                <div className="parsed-task-solution">
+                  <p><strong>💡 Rozwiązanie:</strong></p>
+                  <p>{parsedTask.solution}</p>
+                </div>
+              )}
 
-              <p className="parsed-task-source">
-                <small>📚 {parsedTask.source}</small>
-              </p>
+              {parsedTask.source && (
+                <p className="parsed-task-source">
+                  <small>📚 {parsedTask.source}</small>
+                </p>
+              )}
             </div>
           ))}
         </div>
